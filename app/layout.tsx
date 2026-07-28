@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Raju Ghee Sweets - Invoice Manager",
-  description: "Shopify-style document scanner and invoice management dashboard",
+  title: "InvoiceNext - Raju Ghee Sweets Invoice Manager",
+  description: "InvoiceNext AI document scanner and GST invoice management dashboard for Raju Ghee Sweets",
 };
 
 export default function RootLayout({
