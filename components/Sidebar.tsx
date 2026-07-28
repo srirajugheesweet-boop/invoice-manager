@@ -6,6 +6,7 @@ import {
   FileText,
   BarChart3,
   Settings,
+  LucideIcon,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -13,15 +14,23 @@ interface SidebarProps {
   onPageChange: (pageId: string) => void;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: string;
+  count?: number;
+}
+
 export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
-  const navItems = [
+  const navItems: NavItem[] = [
     { id: "scan", label: "Scan Documents", icon: ScanLine, badge: "AI" },
     { id: "invoices", label: "Invoices", icon: FileText, count: 16 },
     { id: "analytics", label: "Analytics", icon: BarChart3, badge: "Soon" },
   ];
 
   return (
-    <aside className="w-60 bg-[#ebebeb] border-r border-[#dcdcdc] flex flex-col justify-between select-none min-h-[calc(100vh-3.5rem)] text-slate-800">
+    <aside className="w-60 bg-[#ebebeb] border-r border-[#dcdcdc] flex flex-col justify-between select-none min-h-[calc(100vh-3.5rem)] text-slate-800 shrink-0">
       <div className="p-3 space-y-3">
         <div className="px-3 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
           Main Menu
@@ -50,7 +59,7 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
                   />
                   <span>{item.label}</span>
                 </div>
-                {item.count && (
+                {item.count !== undefined && (
                   <span className="bg-[#dedede] text-slate-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
                     {item.count}
                   </span>
