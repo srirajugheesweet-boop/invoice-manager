@@ -117,7 +117,7 @@ export default function ScanDocumentsView() {
     setFilePreviews([]);
   };
 
-  // Run Scan Job - Call Gemini 2.5 Flash for all images one by one
+  // Run Scan Job - Call Gemini AI (gemini-3.6-flash) for all images one by one
   const runScanJob = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -299,7 +299,7 @@ export default function ScanDocumentsView() {
             Scan GST Invoices & Bills
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Gemini 2.5 Flash AI-powered OCR extraction for Raju Ghee Sweets & Firestore Sync
+            Gemini 3.6 Flash AI-powered OCR extraction for Raju Ghee Sweets & Firestore Sync
           </p>
         </div>
 
@@ -321,7 +321,7 @@ export default function ScanDocumentsView() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              Configure Gemini 2.5 Flash API Key
+              Configure Gemini AI API Key
             </span>
             <span className="text-[11px] text-amber-700">Stored in .env or custom input</span>
           </div>
@@ -462,7 +462,7 @@ export default function ScanDocumentsView() {
             <div className="flex justify-between text-xs font-semibold text-amber-900">
               <span className="flex items-center gap-1.5">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                Gemini 2.5 Flash AI Processing: {scanProgress.currentFileName}
+                Gemini 3.6 Flash AI Processing: {scanProgress.currentFileName}
               </span>
               <span>
                 {Math.round((scanProgress.current / scanProgress.total) * 100)}%

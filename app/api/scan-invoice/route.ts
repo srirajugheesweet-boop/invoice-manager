@@ -53,41 +53,57 @@ export async function POST(req: NextRequest) {
     let responseText = "";
     let lastError = "";
 
-    // Solution 2: Official @google/genai SDK with model "gemini-2.5-flash"
+    // Try official @google/genai SDK with supported models (gemini-3.6-flash, gemini-3.5-flash)
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: PROMPT },
+      const sdkModelsToTry = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash-preview"];
+      
+      for (const modelName of sdkModelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [
               {
-                inlineData: {
-                  mimeType,
-                  data: cleanBase64,
-                },
+                role: "user",
+                parts: [
+                  { text: PROMPT },
+                  {
+                    inlineData: {
+                      mimeType,
+                      data: cleanBase64,
+                    },
+                  },
+                ],
               },
             ],
-          },
-        ],
-      });
+          });
 
-      if (response && response.text) {
-        responseText = response.text;
+          if (response && response.text) {
+            responseText = response.text;
+            break;
+          }
+        } catch (mErr: any) {
+          console.warn(`SDK model ${modelName} error:`, mErr?.message || mErr);
+          lastError = mErr?.message || String(mErr);
+        }
       }
     } catch (sdkErr: any) {
-      console.warn("@google/genai SDK with gemini-2.5-flash error:", sdkErr?.message || sdkErr);
+      console.warn("@google/genai SDK error:", sdkErr?.message || sdkErr);
       lastError = sdkErr?.message || String(sdkErr);
     }
 
-    // Solution 3: Fallback using v1 REST API endpoint for gemini-2.5-flash / gemini-2.5-pro
+    // Solution 3: Fallback using REST API endpoints for active Gemini models
     if (!responseText) {
-      const modelsToTry = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+      const modelsToTry = [
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3-flash-preview",
+        "gemini-2.5-flash",
+        "gemini-flash-latest"
+      ];
       const apiEndpoints = [
-        "https://generativelanguage.googleapis.com/v1/models",
         "https://generativelanguage.googleapis.com/v1beta/models",
+        "https://generativelanguage.googleapis.com/v1/models",
       ];
 
       for (const baseEndpoint of apiEndpoints) {
