@@ -265,13 +265,12 @@ export default function AuthView() {
             <button
               type="button"
               onClick={handleInstallClick}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 px-4 rounded-xl shadow-sm flex items-center justify-center space-x-2 cursor-pointer transition-colors"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-md flex items-center justify-center space-x-2.5 cursor-pointer transition-all border border-slate-700 group"
             >
-              <Smartphone className="w-4 h-4 text-amber-400" />
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center font-bold text-slate-950 shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                <FileCheck2 className="w-3.5 h-3.5 text-slate-950" />
+              </div>
               <span>Install InvoiceNext App</span>
-              {/* <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono font-medium">
-                PWA
-              </span> */}
             </button>
           </div>
         )}

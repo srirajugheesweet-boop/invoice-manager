@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import AuthView from "@/components/AuthView";
 import Header from "@/components/Header";
@@ -10,6 +10,43 @@ import { RefreshCw, ShieldCheck } from "lucide-react";
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Auto-update Service Worker listener for new deployments
+  useEffect(() => {
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (
+                  installingWorker.state === "installed" &&
+                  navigator.serviceWorker.controller
+                ) {
+                  // New deployment detected! Auto reload to apply updates immediately
+                  console.log("New deployment detected. Auto updating PWA app...");
+                  window.location.reload();
+                }
+              };
+            }
+          };
+        })
+        .catch((err) => {
+          console.error("Service worker registration failed:", err);
+        });
+
+      // Periodically check for new deployments every 60 seconds
+      const interval = setInterval(() => {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          if (reg) reg.update();
+        });
+      }, 60000);
+
+      return () => clearInterval(interval);
+    }
+  }, []);
 
   if (loading) {
     return (
