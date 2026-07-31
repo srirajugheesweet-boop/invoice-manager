@@ -12,6 +12,7 @@ import {
   LucideIcon,
   Cpu,
   LogOut,
+  X,
 } from "lucide-react";
 
 interface NavItem {
@@ -22,7 +23,12 @@ interface NavItem {
   count?: number;
 }
 
-export default function Sidebar() {
+interface SidebarProps {
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
+}
+
+export default function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
 
@@ -43,11 +49,20 @@ export default function Sidebar() {
     }
   };
 
-  return (
-    <aside className="w-60 bg-[#ebebeb] border-r border-[#dcdcdc] flex flex-col justify-between select-none min-h-[calc(100vh-3.5rem)] text-slate-800 shrink-0">
+  const SidebarContent = (
+    <aside className="w-64 md:w-60 bg-[#ebebeb] border-r border-[#dcdcdc] flex flex-col justify-between select-none h-full text-slate-800 shrink-0">
       <div className="p-3 space-y-3">
-        <div className="px-3 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-          Main Menu
+        {/* Mobile Header with Close Button */}
+        <div className="flex items-center justify-between px-3 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+          <span>Main Menu</span>
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="p-1 text-slate-500 hover:text-slate-900 md:hidden rounded-lg cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-1">
@@ -61,6 +76,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onCloseMobile}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
                     ? "bg-white text-slate-900 shadow-sm font-semibold border border-slate-200/80"
@@ -107,6 +123,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-[#dbdbdb] bg-[#e6e6e6] space-y-1">
         <Link
           href="/analytics"
+          onClick={onCloseMobile}
           className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:bg-[#dadada] cursor-pointer transition-colors"
         >
           <Settings className="w-4 h-4 text-slate-600" />
@@ -115,7 +132,10 @@ export default function Sidebar() {
 
         {user && (
           <button
-            onClick={handleLogout}
+            onClick={() => {
+              if (onCloseMobile) onCloseMobile();
+              handleLogout();
+            }}
             className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-semibold text-rose-700 hover:bg-rose-100/80 cursor-pointer transition-colors"
           >
             <LogOut className="w-4 h-4 text-rose-600" />
@@ -124,5 +144,27 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
+  );
+
+  return (
+    <>
+      {/* Desktop Fixed Sidebar */}
+      <div className="hidden md:flex shrink-0 min-h-[calc(100vh-3.5rem)]">
+        {SidebarContent}
+      </div>
+
+      {/* Mobile Slide-Over Drawer with Backdrop */}
+      {isMobileOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden animate-in fade-in duration-200">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
+            onClick={onCloseMobile}
+          />
+          <div className="relative z-10 animate-in slide-in-from-left duration-200">
+            {SidebarContent}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

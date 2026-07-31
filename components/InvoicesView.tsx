@@ -136,7 +136,7 @@ export default function InvoicesView() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-[#f6f6f7] min-h-screen text-slate-800 font-sans max-w-7xl mx-auto">
+    <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 bg-[#f6f6f7] min-h-screen text-slate-800 font-sans max-w-7xl mx-auto">
       {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-2">

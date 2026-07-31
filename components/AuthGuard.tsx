@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import AuthView from "@/components/AuthView";
 import Header from "@/components/Header";
@@ -9,6 +9,7 @@ import { RefreshCw, ShieldCheck } from "lucide-react";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   if (loading) {
     return (
@@ -30,9 +31,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   // Once authenticated, render full shell layout with Header, Sidebar, and Page content
   return (
     <div className="min-h-screen bg-[#f6f6f7] flex flex-col font-sans select-none">
-      <Header />
-      <div className="flex flex-1 overflow-hidden min-h-[calc(100vh-3.5rem)]">
-        <Sidebar />
+      <Header onToggleMobileMenu={() => setIsMobileOpen(!isMobileOpen)} />
+      <div className="flex flex-1 overflow-hidden min-h-[calc(100vh-3.5rem)] relative">
+        <Sidebar isMobileOpen={isMobileOpen} onCloseMobile={() => setIsMobileOpen(false)} />
         <main className="flex-1 overflow-y-auto bg-[#f6f6f7]">
           {children}
         </main>

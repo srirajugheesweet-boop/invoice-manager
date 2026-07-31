@@ -23,6 +23,7 @@ import {
   CheckCheck,
   ChevronDown,
   ChevronUp,
+  Camera,
 } from "lucide-react";
 import { saveInvoiceToFirebase, ExtractedInvoice } from "@/lib/firebase";
 
@@ -59,10 +60,21 @@ export default function ScanDocumentsView() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleUploadClick = () => {
+    // On mobile devices, show Upload Choice Modal (Camera vs Gallery)
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setShowUploadModal(true);
+    } else {
+      fileInputRef.current?.click();
+    }
   };
 
   // Handle File Selection (Images only, multiple)
@@ -282,7 +294,7 @@ export default function ScanDocumentsView() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto font-sans text-slate-800">
+    <div className="p-3.5 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto font-sans text-slate-800">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-2 border border-slate-700 animate-in fade-in slide-in-from-top-4 duration-200">
@@ -320,9 +332,10 @@ export default function ScanDocumentsView() {
         <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className="bg-slate-50 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-amber-50/20 group relative"
+          onClick={handleUploadClick}
+          className="bg-slate-50 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all hover:bg-amber-50/20 group relative"
         >
+          {/* Gallery / File Browser Input */}
           <input
             type="file"
             ref={fileInputRef}
@@ -332,16 +345,78 @@ export default function ScanDocumentsView() {
             className="hidden"
           />
 
+          {/* Camera Capture Input */}
+          <input
+            type="file"
+            ref={cameraInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+          />
+
           <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
             <UploadCloud className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-semibold text-slate-900">
-            Click to Browse Images or Drag & Drop Invoice Pictures
+            Tap to Upload or Drag & Drop Invoice Pictures
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Supports multiple JPEG, PNG, WEBP GST bills, supplier receipts & photos
+            Supports Camera photos, Gallery images, PNG, JPG, WEBP supplier bills
           </p>
         </div>
+
+        {/* Mobile Upload Source Choice Modal / Bottom Sheet */}
+        {showUploadModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <UploadCloud className="w-4 h-4 text-amber-600" />
+                  Select Image Source
+                </h4>
+                <button
+                  onClick={() => setShowUploadModal(false)}
+                  className="text-slate-400 hover:text-slate-700 font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                {/* Take Photo with Camera */}
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setTimeout(() => cameraInputRef.current?.click(), 100);
+                  }}
+                  className="p-4 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 flex flex-col items-center justify-center text-center space-y-2 cursor-pointer transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-sm">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-amber-950">Take Photo</span>
+                  <span className="text-[10px] text-amber-700">Open Camera</span>
+                </button>
+
+                {/* Choose from Gallery / Files */}
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setTimeout(() => fileInputRef.current?.click(), 100);
+                  }}
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex flex-col items-center justify-center text-center space-y-2 cursor-pointer transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center shadow-sm">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900">Photo Gallery</span>
+                  <span className="text-[10px] text-slate-500">Browse Files</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Selected Images Thumbnail Grid */}
         {filePreviews.length > 0 && (
