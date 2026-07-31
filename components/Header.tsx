@@ -1,31 +1,24 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Search,
   Eye,
   Bell,
   ChevronDown,
-  Sparkles,
   Command,
-  Building2,
-  Store,
   FileCheck2,
 } from "lucide-react";
 
-interface HeaderProps {
-  activePage: string;
-  onPageChange: (page: string) => void;
-}
-
-export default function Header({ activePage, onPageChange }: HeaderProps) {
+export default function Header() {
   const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <header className="bg-[#1a1a1a] text-white h-14 px-4 flex items-center justify-between sticky top-0 z-50 shadow-md border-b border-[#2d2d2d]">
       {/* Left: Brand Logo & Company Title */}
       <div className="flex items-center space-x-3 min-w-[240px]">
-        <div className="flex items-center space-x-2.5 cursor-pointer group" onClick={() => onPageChange("scan")}>
+        <Link href="/" className="flex items-center space-x-2.5 group">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center font-bold text-slate-950 shadow-sm group-hover:scale-105 transition-transform">
             <FileCheck2 className="w-5 h-5 text-slate-900" />
           </div>
@@ -40,7 +33,7 @@ export default function Header({ activePage, onPageChange }: HeaderProps) {
             </div>
             <span className="text-[10px] text-amber-200/80 font-medium">Raju Ghee Sweets</span>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Middle: Search Bar */}

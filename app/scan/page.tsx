@@ -2,6 +2,6 @@
 
 import ScanDocumentsView from "@/components/ScanDocumentsView";
 
-export default function HomePage() {
+export default function ScanPage() {
   return <ScanDocumentsView />;
 }

@@ -4,25 +4,23 @@ import React, { useState, useRef } from "react";
 import {
   UploadCloud,
   FileCheck,
-  Zap,
+  Cpu,
   Sparkles,
-  Search,
   CheckCircle2,
   AlertCircle,
   FileText,
   Eye,
-  Trash2,
   ArrowRight,
   RefreshCw,
-  Plus,
   Check,
   X,
   Edit,
   Key,
   Image as ImageIcon,
   CheckCheck,
-  ChevronDown,
-  ChevronUp,
+  Sliders,
+  Database,
+  Building,
 } from "lucide-react";
 import { saveInvoiceToFirebase, ExtractedInvoice } from "@/lib/firebase";
 
@@ -32,9 +30,10 @@ interface ScannedInvoiceItem extends ExtractedInvoice {
   file?: File;
   scanStatus: "pending" | "scanning" | "scanned" | "error" | "accepted";
   errorMessage?: string;
+  provider?: string;
 }
 
-export default function ScanDocumentsView() {
+export default function DocAIScanView() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<{ file: File; preview: string }[]>([]);
   const [scannedResults, setScannedResults] = useState<ScannedInvoiceItem[]>([]);
@@ -44,10 +43,13 @@ export default function ScanDocumentsView() {
     total: 0,
     currentFileName: "",
   });
-  
-  // Custom API Key modal/input
-  const [customApiKey, setCustomApiKey] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+
+  // Google Document AI Config Modal / Settings
+  const [showConfig, setShowConfig] = useState(false);
+  const [projectId, setProjectId] = useState(process.env.NEXT_PUBLIC_DOCUMENT_AI_PROJECT_ID || "mokshith-lab");
+  const [location, setLocation] = useState(process.env.NEXT_PUBLIC_DOCUMENT_AI_LOCATION || "us");
+  const [processorId, setProcessorId] = useState(process.env.NEXT_PUBLIC_DOCUMENT_AI_PROCESSOR_ID || "");
+  const [apiKey, setApiKey] = useState("");
 
   // Edit Modal State
   const [editingItem, setEditingItem] = useState<ScannedInvoiceItem | null>(null);
@@ -65,7 +67,7 @@ export default function ScanDocumentsView() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Handle File Selection (Images only, multiple)
+  // Handle File Selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files).filter((file) => file.type.startsWith("image/"));
@@ -75,7 +77,6 @@ export default function ScanDocumentsView() {
       }
       setSelectedFiles((prev) => [...prev, ...files]);
 
-      // Generate previews
       files.forEach((file) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -117,7 +118,7 @@ export default function ScanDocumentsView() {
     setFilePreviews([]);
   };
 
-  // Run Scan Job - Call Gemini AI (gemini-3.6-flash) for all images one by one
+  // Run Document AI Scan Job
   const runScanJob = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -138,7 +139,6 @@ export default function ScanDocumentsView() {
       });
 
       try {
-        // Read file as base64
         const base64Data = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
@@ -146,15 +146,18 @@ export default function ScanDocumentsView() {
           reader.readAsDataURL(file);
         });
 
-        // Send to Next.js API Route for Gemini 2.5 Flash
-        const response = await fetch("/api/scan-invoice", {
+        // Send to backend route /api/scan-document-ai
+        const response = await fetch("/api/scan-document-ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             imageBase64: base64Data,
             mimeType: file.type,
             fileName: file.name,
-            customApiKey: customApiKey || undefined,
+            customProjectId: projectId || undefined,
+            customLocation: location || undefined,
+            customProcessorId: processorId || undefined,
+            customApiKey: apiKey || undefined,
           }),
         });
 
@@ -162,77 +165,38 @@ export default function ScanDocumentsView() {
 
         if (response.ok && resData.success) {
           newScannedItems.push({
-            tempId: `SCAN-${Date.now()}-${i}`,
-            vendor_name: resData.data.vendor_name,
-            gstin: resData.data.gstin,
-            invoice_number: resData.data.invoice_number,
-            invoice_date: resData.data.invoice_date,
-            taxable_amount: resData.data.taxable_amount,
-            cgst: resData.data.cgst,
-            sgst: resData.data.sgst,
-            igst: resData.data.igst,
-            total_gst: resData.data.total_gst,
-            grand_total: resData.data.grand_total,
-            hsn: resData.data.hsn,
+            tempId: `DOCAI-${Date.now()}-${i}`,
+            vendor_name: resData.data.vendor_name || "Unknown Vendor",
+            gstin: resData.data.gstin || "",
+            invoice_number: resData.data.invoice_number || "",
+            invoice_date: resData.data.invoice_date || new Date().toISOString().split("T")[0],
+            taxable_amount: resData.data.taxable_amount || 0,
+            cgst: resData.data.cgst || 0,
+            sgst: resData.data.sgst || 0,
+            igst: resData.data.igst || 0,
+            total_gst: resData.data.total_gst || 0,
+            grand_total: resData.data.grand_total || 0,
+            hsn: resData.data.hsn || "",
             items: resData.data.items || [],
             fileName: file.name,
             imagePreviewUrl: previewUrl,
             scanStatus: "scanned",
+            provider: resData.provider || "Google Document AI",
           });
         } else {
-          // If API key is missing or model fails, generate intelligent demo data for seamless testing
-          console.warn("API scan issue:", resData.error);
-          newScannedItems.push({
-            tempId: `SCAN-${Date.now()}-${i}`,
-            vendor_name: i % 2 === 0 ? "Raju Cow Milk & Ghee Dairy" : "Sri Lakshmi Wholesalers",
-            gstin: i % 2 === 0 ? "36AAAAA0000A1Z5" : "36BBBBB1111B2Z8",
-            invoice_number: `INV-2026-${Math.floor(100 + Math.random() * 900)}`,
-            invoice_date: new Date().toISOString().split("T")[0],
-            taxable_amount: 15000 + i * 2500,
-            cgst: 675 + i * 112.5,
-            sgst: 675 + i * 112.5,
-            igst: 0,
-            total_gst: 1350 + i * 225,
-            grand_total: 16350 + i * 2725,
-            hsn: "04051000",
-            items: [
-              { name: "Pure Desi Ghee 15L Tin", quantity: 2, rate: 6500, amount: 13000, hsn: "0405" },
-              { name: "Butter Milk Pouch", quantity: 10, rate: 200, amount: 2000, hsn: "0403" },
-            ],
-            fileName: file.name,
-            imagePreviewUrl: previewUrl,
-            scanStatus: "scanned",
-            errorMessage: resData.error && resData.isMissingKey ? "Missing Gemini API key in .env (Used preview mode)" : undefined,
-          });
+          console.error("Document AI API error:", resData.error);
+          showToast(`Error scanning ${file.name}: ${resData.error || "Document AI error"}`);
         }
       } catch (err: any) {
-        console.error(`Error scanning ${file.name}:`, err);
-        // Fallback item so UI never breaks
-        newScannedItems.push({
-          tempId: `SCAN-${Date.now()}-${i}`,
-          vendor_name: "Raju Ghee Sweets Supplier",
-          gstin: "36ABCDE1234F1Z5",
-          invoice_number: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-          invoice_date: new Date().toISOString().split("T")[0],
-          taxable_amount: 12000,
-          cgst: 540,
-          sgst: 540,
-          igst: 0,
-          total_gst: 1080,
-          grand_total: 13080,
-          hsn: "0405",
-          items: [{ name: "Desi Ghee Batch Item", quantity: 1, rate: 12000, amount: 12000, hsn: "0405" }],
-          fileName: file.name,
-          imagePreviewUrl: previewUrl,
-          scanStatus: "scanned",
-        });
+        console.error(`Error processing ${file.name} with Document AI:`, err);
+        showToast(`Failed to scan ${file.name}. ${err.message || ""}`);
       }
     }
 
     setScannedResults((prev) => [...newScannedItems, ...prev]);
     setIsScanning(false);
     clearAllSelectedFiles();
-    showToast(`Successfully processed ${newScannedItems.length} invoice image(s) with Gemini AI!`);
+    showToast(`Processed ${newScannedItems.length} image(s) via Google Document AI!`);
   };
 
   // Accept single item -> Save to Firebase Firestore
@@ -246,7 +210,7 @@ export default function ScanDocumentsView() {
     }
   };
 
-  // Accept All items -> Save all to Firebase Firestore
+  // Accept All items
   const handleAcceptAll = async () => {
     if (scannedResults.length === 0) return;
     const count = scannedResults.length;
@@ -265,7 +229,7 @@ export default function ScanDocumentsView() {
     showToast(`All ${savedCount} of ${count} invoices saved to Firebase Firestore!`);
   };
 
-  // Cross Icon -> Reject single item (remove without saving)
+  // Reject single item
   const handleRejectSingle = (tempId: string) => {
     setScannedResults((prev) => prev.filter((i) => i.tempId !== tempId));
     showToast("Invoice item removed.");
@@ -295,11 +259,11 @@ export default function ScanDocumentsView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Zap className="w-5 h-5 text-amber-500 fill-amber-400" />
-            Scan GST Invoices & Bills
+            <Cpu className="w-5 h-5 text-indigo-600 fill-indigo-100" />
+            Next Document AI Invoice Scan
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Next AI-powered OCR extraction for Raju Ghee Sweets & Firestore Sync
+            High-efficiency document OCR extraction for Raju Ghee Sweets & Firestore Sync
           </p>
         </div>
       </div>
@@ -308,8 +272,8 @@ export default function ScanDocumentsView() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-amber-500" />
-            Select Invoice Images
+            <ImageIcon className="w-4 h-4 text-indigo-600" />
+            Select Invoice Images for Document AI
           </h2>
           <span className="text-xs text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full font-medium">
             Multiple Images Supported (PNG, JPG, WEBP)
@@ -321,7 +285,7 @@ export default function ScanDocumentsView() {
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className="bg-slate-50 border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-amber-50/20 group relative"
+          className="bg-slate-50 border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-8 text-center cursor-pointer transition-all hover:bg-indigo-50/20 group relative"
         >
           <input
             type="file"
@@ -332,14 +296,14 @@ export default function ScanDocumentsView() {
             className="hidden"
           />
 
-          <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
             <UploadCloud className="w-6 h-6" />
           </div>
           <h3 className="text-sm font-semibold text-slate-900">
-            Click to Browse Images or Drag & Drop Invoice Pictures
+            Click to Browse Images or Drag & Drop Invoices for Document AI Processing
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Supports multiple JPEG, PNG, WEBP GST bills, supplier receipts & photos
+            Fast, cost-efficient GST bill scanning powered by Google Cloud Document AI
           </p>
         </div>
 
@@ -394,7 +358,7 @@ export default function ScanDocumentsView() {
             disabled={selectedFiles.length === 0 || isScanning}
             className={`px-6 py-2.5 rounded-xl font-bold text-xs shadow-md flex items-center space-x-2 transition-all cursor-pointer ${
               selectedFiles.length > 0 && !isScanning
-                ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-amber-500/25 animate-pulse"
+                ? "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white shadow-indigo-500/25"
                 : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
             }`}
           >
@@ -402,33 +366,33 @@ export default function ScanDocumentsView() {
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-white" />
                 <span>
-                  Scanning Image {scanProgress.current} of {scanProgress.total}...
+                  DocAI Scanning {scanProgress.current} of {scanProgress.total}...
                 </span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4 fill-white" />
-                <span>Run Scan Job ({selectedFiles.length} Image{selectedFiles.length !== 1 ? "s" : ""})</span>
+                <Cpu className="w-4 h-4 fill-white" />
+                <span>Run Document AI Scan ({selectedFiles.length} Image{selectedFiles.length !== 1 ? "s" : ""})</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Live Progress Bar when Scanning */}
+        {/* Live Progress Bar */}
         {isScanning && (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2 animate-in fade-in duration-200">
-            <div className="flex justify-between text-xs font-semibold text-amber-900">
+          <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-xl space-y-2 animate-in fade-in duration-200">
+            <div className="flex justify-between text-xs font-semibold text-indigo-950">
               <span className="flex items-center gap-1.5">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                Next AI Processing: {scanProgress.currentFileName}
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                Google Document AI Processing: {scanProgress.currentFileName}
               </span>
               <span>
                 {Math.round((scanProgress.current / scanProgress.total) * 100)}%
               </span>
             </div>
-            <div className="w-full bg-amber-200 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-indigo-200 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-amber-600 h-2 rounded-full transition-all duration-300"
+                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(scanProgress.current / scanProgress.total) * 100}%` }}
               ></div>
             </div>
@@ -438,15 +402,15 @@ export default function ScanDocumentsView() {
 
       {/* Section 2: Scanned Results List & Actions */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
-        {/* Top Header of Results: Title & Accept All Button */}
+        {/* Top Header of Results */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-emerald-600" />
-              Scanned Invoices ({scannedResults.length})
+              <FileCheck className="w-5 h-5 text-indigo-600" />
+              Document AI Scanned Invoices ({scannedResults.length})
             </h2>
             <p className="text-xs text-slate-500">
-              Review extracted GST details, edit if needed, and accept to save to Firebase
+              Extracted via Google Document AI — Review, edit, and accept to save to Firebase
             </p>
           </div>
 
@@ -463,24 +427,24 @@ export default function ScanDocumentsView() {
           </div>
         </div>
 
-        {/* Empty State if no scanned items */}
+        {/* Empty State */}
         {scannedResults.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-3">
-            <FileText className="w-12 h-12 mx-auto stroke-1 text-slate-300" />
-            <p className="text-sm font-semibold text-slate-600">No pending scanned items</p>
+            <Cpu className="w-12 h-12 mx-auto stroke-1 text-indigo-300" />
+            <p className="text-sm font-semibold text-slate-600">No pending Document AI scans</p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Select GST invoice images above and click "Run Scan Job" to extract details with Next AI.
+              Select invoice images above and click "Run Document AI Scan" for fast, cost-effective extraction.
             </p>
           </div>
         ) : (
-          /* Scanned Items Cards / Table List */
+          /* Scanned Items Cards */
           <div className="divide-y divide-slate-100">
             {scannedResults.map((item) => (
               <div
                 key={item.tempId}
                 className="p-5 hover:bg-slate-50/60 transition-colors flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
               >
-                {/* Left: Thumbnail & Main Invoice Details */}
+                {/* Left Details */}
                 <div className="flex items-start space-x-4 flex-1">
                   {item.imagePreviewUrl ? (
                     <img
@@ -490,7 +454,7 @@ export default function ScanDocumentsView() {
                       onClick={() => setViewingItem(item)}
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                    <div className="w-16 h-16 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
                       <FileText className="w-7 h-7" />
                     </div>
                   )}
@@ -503,11 +467,9 @@ export default function ScanDocumentsView() {
                           GSTIN: {item.gstin}
                         </span>
                       )}
-                      {item.hsn && (
-                        <span className="text-[10px] font-mono bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                          HSN: {item.hsn}
-                        </span>
-                      )}
+                      <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded">
+                        DocAI
+                      </span>
                     </div>
 
                     <div className="text-xs text-slate-500 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -522,18 +484,17 @@ export default function ScanDocumentsView() {
                       </span>
                     </div>
 
-                    {/* Tax Breakdowns pill */}
                     <div className="text-[11px] text-slate-600 flex flex-wrap items-center gap-2 pt-0.5">
                       <span className="bg-slate-100 px-2 py-0.5 rounded">Taxable: ₹{Number(item.taxable_amount).toLocaleString('en-IN')}</span>
                       <span className="bg-slate-100 px-2 py-0.5 rounded">CGST: ₹{Number(item.cgst).toLocaleString('en-IN')}</span>
                       <span className="bg-slate-100 px-2 py-0.5 rounded">SGST: ₹{Number(item.sgst).toLocaleString('en-IN')}</span>
                       {Number(item.igst) > 0 && <span className="bg-slate-100 px-2 py-0.5 rounded">IGST: ₹{Number(item.igst).toLocaleString('en-IN')}</span>}
-                      <span className="bg-amber-50 text-amber-800 font-semibold px-2 py-0.5 rounded">Total GST: ₹{Number(item.total_gst).toLocaleString('en-IN')}</span>
+                      <span className="bg-indigo-50 text-indigo-800 font-semibold px-2 py-0.5 rounded">Total GST: ₹{Number(item.total_gst).toLocaleString('en-IN')}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Center: Grand Total Amount */}
+                {/* Grand Total */}
                 <div className="lg:text-right px-2 py-1 bg-slate-50 lg:bg-transparent rounded-lg border border-slate-200/60 lg:border-none w-full lg:w-auto">
                   <div className="text-[11px] text-slate-400 font-medium">Grand Total</div>
                   <div className="text-lg font-extrabold text-slate-900">
@@ -541,9 +502,8 @@ export default function ScanDocumentsView() {
                   </div>
                 </div>
 
-                {/* Right: Actions (Tick, Cross, Edit) */}
+                {/* Actions */}
                 <div className="flex items-center space-x-2 shrink-0 self-end lg:self-center">
-                  {/* View Details Button */}
                   <button
                     onClick={() => setViewingItem(item)}
                     className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
@@ -552,16 +512,14 @@ export default function ScanDocumentsView() {
                     <Eye className="w-4 h-4" />
                   </button>
 
-                  {/* Edit Feature Button */}
                   <button
                     onClick={() => setEditingItem(item)}
-                    className="p-2 text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors cursor-pointer"
+                    className="p-2 text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
                     title="Edit Extracted Details"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
 
-                  {/* Cross Icon (✕) -> Reject Item */}
                   <button
                     onClick={() => handleRejectSingle(item.tempId)}
                     className="p-2 text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 rounded-lg transition-colors cursor-pointer"
@@ -570,7 +528,6 @@ export default function ScanDocumentsView() {
                     <X className="w-4.5 h-4.5 font-bold" />
                   </button>
 
-                  {/* Tick Icon (✓) -> Accept Item */}
                   <button
                     onClick={() => handleAcceptSingle(item)}
                     className="p-2 text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 border border-emerald-300 rounded-lg transition-colors cursor-pointer flex items-center space-x-1"
@@ -592,8 +549,8 @@ export default function ScanDocumentsView() {
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Edit className="w-4 h-4 text-amber-500" />
-                Edit Scanned Invoice Data
+                <Edit className="w-4 h-4 text-indigo-600" />
+                Edit Document AI Scanned Invoice
               </h3>
               <button
                 onClick={() => setEditingItem(null)}
@@ -610,7 +567,7 @@ export default function ScanDocumentsView() {
                   type="text"
                   value={editingItem.vendor_name}
                   onChange={(e) => setEditingItem({ ...editingItem, vendor_name: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -620,7 +577,7 @@ export default function ScanDocumentsView() {
                   type="text"
                   value={editingItem.gstin}
                   onChange={(e) => setEditingItem({ ...editingItem, gstin: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -630,7 +587,7 @@ export default function ScanDocumentsView() {
                   type="text"
                   value={editingItem.invoice_number}
                   onChange={(e) => setEditingItem({ ...editingItem, invoice_number: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -640,7 +597,7 @@ export default function ScanDocumentsView() {
                   type="date"
                   value={editingItem.invoice_date}
                   onChange={(e) => setEditingItem({ ...editingItem, invoice_date: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -650,7 +607,7 @@ export default function ScanDocumentsView() {
                   type="text"
                   value={editingItem.hsn}
                   onChange={(e) => setEditingItem({ ...editingItem, hsn: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -672,7 +629,7 @@ export default function ScanDocumentsView() {
                       grand_total: taxable + totalGst,
                     });
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500 font-semibold"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 font-semibold"
                 />
               </div>
 
@@ -691,7 +648,7 @@ export default function ScanDocumentsView() {
                       grand_total: (editingItem.taxable_amount || 0) + totalGst,
                     });
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -710,7 +667,7 @@ export default function ScanDocumentsView() {
                       grand_total: (editingItem.taxable_amount || 0) + totalGst,
                     });
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -729,7 +686,7 @@ export default function ScanDocumentsView() {
                       grand_total: (editingItem.taxable_amount || 0) + totalGst,
                     });
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
@@ -739,7 +696,7 @@ export default function ScanDocumentsView() {
                   type="number"
                   value={editingItem.grand_total}
                   onChange={(e) => setEditingItem({ ...editingItem, grand_total: Number(e.target.value) || 0 })}
-                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-amber-500 font-bold text-slate-900 bg-amber-50"
+                  className="w-full p-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 font-bold text-slate-900 bg-indigo-50/50"
                 />
               </div>
             </div>
@@ -753,7 +710,7 @@ export default function ScanDocumentsView() {
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg cursor-pointer"
+                className="px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg cursor-pointer"
               >
                 Save Changes
               </button>
@@ -762,14 +719,14 @@ export default function ScanDocumentsView() {
         </div>
       )}
 
-      {/* VIEW DETAILS MODAL */}
+      {/* VIEW INVOICE DETAILS MODAL */}
       {viewingItem && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-amber-500" />
-                Invoice Preview & Extracted Data
+                <FileText className="w-4 h-4 text-indigo-600" />
+                Document AI Invoice Details
               </h3>
               <button
                 onClick={() => setViewingItem(null)}
@@ -779,62 +736,81 @@ export default function ScanDocumentsView() {
               </button>
             </div>
 
-            {viewingItem.imagePreviewUrl && (
-              <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-900">
-                <img
-                  src={viewingItem.imagePreviewUrl}
-                  alt={viewingItem.fileName}
-                  className="w-full max-h-60 object-contain mx-auto"
-                />
+            <div className="space-y-3 text-xs text-slate-700">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Vendor Name</span>
+                  <span className="font-bold text-slate-900 text-sm">{viewingItem.vendor_name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">GSTIN</span>
+                  <span className="font-mono font-semibold">{viewingItem.gstin || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Invoice #</span>
+                  <span className="font-semibold">{viewingItem.invoice_number || "N/A"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[11px]">Invoice Date</span>
+                  <span className="font-semibold">{viewingItem.invoice_date || "N/A"}</span>
+                </div>
               </div>
-            )}
 
-            <div className="space-y-2 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">Vendor Name:</span>
-                <span className="font-bold text-slate-900">{viewingItem.vendor_name}</span>
+              {/* Items Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="p-2">Item Description</th>
+                      <th className="p-2 text-right">Qty</th>
+                      <th className="p-2 text-right">Rate</th>
+                      <th className="p-2 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {viewingItem.items && viewingItem.items.length > 0 ? (
+                      viewingItem.items.map((it: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="p-2 font-medium">{it.name}</td>
+                          <td className="p-2 text-right">{it.quantity}</td>
+                          <td className="p-2 text-right">₹{it.rate}</td>
+                          <td className="p-2 text-right font-semibold">₹{it.amount}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="p-3 text-center text-slate-400">
+                          Standard summary invoice (No itemized line breakdown)
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">GSTIN:</span>
-                <span className="font-mono text-slate-800">{viewingItem.gstin || "N/A"}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">Invoice Number:</span>
-                <span className="font-semibold text-slate-800">{viewingItem.invoice_number}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">Invoice Date:</span>
-                <span className="text-slate-800">{viewingItem.invoice_date}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">Taxable Amount:</span>
-                <span className="font-semibold text-slate-900">₹{Number(viewingItem.taxable_amount).toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500 font-semibold">Total GST (CGST/SGST/IGST):</span>
-                <span className="font-semibold text-amber-700">₹{Number(viewingItem.total_gst).toLocaleString('en-IN')}</span>
-              </div>
-              <div className="flex justify-between pt-1 text-sm font-bold">
-                <span className="text-slate-900">Grand Total:</span>
-                <span className="text-emerald-700">₹{Number(viewingItem.grand_total).toLocaleString('en-IN')}</span>
+
+              {/* Totals */}
+              <div className="bg-indigo-50/60 p-3 rounded-xl space-y-1.5 text-right font-mono">
+                <div className="flex justify-between text-slate-600">
+                  <span>Taxable Amount:</span>
+                  <span>₹{Number(viewingItem.taxable_amount).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>CGST + SGST:</span>
+                  <span>₹{Number(viewingItem.total_gst).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between text-slate-900 font-bold text-sm pt-1 border-t border-indigo-200/60 font-sans">
+                  <span>Grand Total:</span>
+                  <span className="text-indigo-900">₹{Number(viewingItem.grand_total).toLocaleString('en-IN')}</span>
+                </div>
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end space-x-2">
+            <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setViewingItem(null)}
-                className="px-4 py-2 text-xs font-semibold border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 Close
-              </button>
-              <button
-                onClick={() => {
-                  handleAcceptSingle(viewingItem);
-                  setViewingItem(null);
-                }}
-                className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
-              >
-                Accept & Save to Firebase
               </button>
             </div>
           </div>

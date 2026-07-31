@@ -1,32 +1,33 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   ScanLine,
   FileText,
   BarChart3,
   Settings,
   LucideIcon,
+  Cpu,
 } from "lucide-react";
 
-interface SidebarProps {
-  activePage: string;
-  onPageChange: (pageId: string) => void;
-}
-
 interface NavItem {
-  id: string;
+  href: string;
   label: string;
   icon: LucideIcon;
   badge?: string;
   count?: number;
 }
 
-export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
+export default function Sidebar() {
+  const pathname = usePathname();
+
   const navItems: NavItem[] = [
-    { id: "scan", label: "Scan Documents", icon: ScanLine, badge: "AI" },
-    { id: "invoices", label: "Invoices", icon: FileText, count: 16 },
-    { id: "analytics", label: "Analytics", icon: BarChart3, badge: "Soon" },
+    { href: "/scan", label: "Scan (Next AI)", icon: ScanLine, badge: "Pro" },
+    { href: "/docai", label: "Next Document AI", icon: Cpu, badge: "Mini" },
+    { href: "/invoices", label: "Invoices", icon: FileText },
+    { href: "/analytics", label: "Analytics", icon: BarChart3, badge: "Soon" },
   ];
 
   return (
@@ -39,13 +40,15 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
         <div className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activePage === item.id;
+            const isActive =
+              pathname === item.href ||
+              (item.href === "/scan" && (pathname === "/" || pathname === "/scan"));
 
             return (
-              <button
-                key={item.id}
-                onClick={() => onPageChange(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                   isActive
                     ? "bg-white text-slate-900 shadow-sm font-semibold border border-slate-200/80"
                     : "text-slate-700 hover:bg-[#e0e0e0] hover:text-slate-900"
@@ -54,7 +57,11 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
                 <div className="flex items-center space-x-2.5">
                   <Icon
                     className={`w-4 h-4 ${
-                      isActive ? "text-amber-600" : "text-slate-500"
+                      isActive
+                        ? item.href === "/docai"
+                          ? "text-indigo-600"
+                          : "text-amber-600"
+                        : "text-slate-500"
                     }`}
                   />
                   <span>{item.label}</span>
@@ -67,15 +74,17 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
                 {item.badge && (
                   <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                      item.badge === "AI"
+                      item.badge === "Next AI"
                         ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : item.badge === "Next Doc"
+                        ? "bg-indigo-100 text-indigo-800 border border-indigo-300"
                         : "bg-slate-200 text-slate-600"
                     }`}
                   >
                     {item.badge}
                   </span>
                 )}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -83,13 +92,13 @@ export default function Sidebar({ activePage, onPageChange }: SidebarProps) {
 
       {/* Footer Settings */}
       <div className="p-3 border-t border-[#dbdbdb] bg-[#e6e6e6]">
-        <button
-          onClick={() => onPageChange("analytics")}
+        <Link
+          href="/analytics"
           className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:bg-[#dadada] cursor-pointer transition-colors"
         >
           <Settings className="w-4 h-4 text-slate-600" />
           <span>Settings</span>
-        </button>
+        </Link>
       </div>
     </aside>
   );
