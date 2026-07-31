@@ -11,7 +11,6 @@ import {
   AlertCircle,
   RefreshCw,
   CheckCircle2,
-  User as UserIcon,
   Smartphone,
   Download,
   X,
@@ -19,11 +18,9 @@ import {
 } from "lucide-react";
 
 export default function AuthView() {
-  const { login, register } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -110,13 +107,8 @@ export default function AuthView() {
     setLoading(true);
 
     try {
-      if (isRegistering) {
-        await register(email, password, displayName || undefined);
-        setSuccessMsg("Admin account created successfully! Signing in...");
-      } else {
-        await login(email, password);
-        setSuccessMsg("Welcome back!");
-      }
+      await login(email, password);
+      setSuccessMsg("Welcome back!");
     } catch (err: any) {
       console.error("Auth error:", err);
       let msg = "Authentication failed. Please check your credentials.";
@@ -125,9 +117,7 @@ export default function AuthView() {
         err.code === "auth/invalid-credential" ||
         err.code === "auth/wrong-password"
       ) {
-        msg = isRegistering
-          ? "Failed to create account. Make sure Email/Password auth is enabled in Firebase Console."
-          : "Invalid email or password. If you haven't created an account on project 'raju-invoice-manager' yet, click 'Register Account' below.";
+        msg = "Invalid email or password.";
       } else if (err.code === "auth/email-already-in-use") {
         msg = "An account with this email already exists. Please Sign In.";
       } else if (err.code === "auth/invalid-email") {
@@ -169,12 +159,10 @@ export default function AuthView() {
         {/* Title */}
         <div className="border-b border-slate-100 pb-3 text-center">
           <h2 className="text-sm font-bold text-slate-900">
-            {isRegistering ? "Register Admin Account" : "Sign In to Account"}
+            Sign In to Account
           </h2>
           <p className="text-[11px] text-slate-500">
-            {isRegistering
-              ? "Create your initial login for raju-invoice-manager"
-              : "Enter your email and password to access invoices & AI scanner"}
+            Enter your email and password to access invoices & AI scanner
           </p>
         </div>
 
@@ -197,24 +185,6 @@ export default function AuthView() {
 
         {/* Auth Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegistering && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Full Name / Business Name
-              </label>
-              <div className="relative flex items-center">
-                <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5" />
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Raju Ghee Admin"
-                  className="w-full bg-slate-50 border border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none text-xs text-slate-900 placeholder-slate-400 rounded-xl pl-10 pr-4 py-2.5 transition-all"
-                />
-              </div>
-            </div>
-          )}
-
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Email Address
@@ -257,33 +227,16 @@ export default function AuthView() {
             {loading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
-                <span>{isRegistering ? "Creating Account..." : "Signing In..."}</span>
+                <span>Signing In...</span>
               </>
             ) : (
               <>
-                <span>{isRegistering ? "Create & Sign In" : "Sign In to Dashboard"}</span>
+                <span>Sign In to Dashboard</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
-
-        {/* Toggle Mode Link */}
-        <div className="text-center pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegistering(!isRegistering);
-              setErrorMsg(null);
-              setSuccessMsg(null);
-            }}
-            className="text-xs text-amber-700 hover:text-amber-900 font-semibold cursor-pointer underline"
-          >
-            {isRegistering
-              ? "Already have an account? Sign In"
-              : "First time on this project? Register Account"}
-          </button>
-        </div>
 
         {/* PWA App Install Button */}
         {!isInstalled && (
