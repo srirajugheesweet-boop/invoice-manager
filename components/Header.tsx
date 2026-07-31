@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 import {
   Search,
   Eye,
@@ -9,10 +10,23 @@ import {
   ChevronDown,
   Command,
   FileCheck2,
+  User as UserIcon,
 } from "lucide-react";
 
 export default function Header() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+
+  const userName =
+    user?.displayName ||
+    (user?.email ? user.email.split("@")[0] : "Raju Ghee Sweets Admin");
+
+  const initials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "RG";
 
   return (
     <header className="bg-[#1a1a1a] text-white h-14 px-4 flex items-center justify-between sticky top-0 z-50 shadow-md border-b border-[#2d2d2d]">
@@ -55,7 +69,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Right: Actions & Account Profile */}
+      {/* Right: Actions & Logged-In User Profile */}
       <div className="flex items-center space-x-3">
         <button className="flex items-center space-x-1.5 bg-[#282828] hover:bg-[#333333] border border-[#3a3a3a] text-xs font-medium text-gray-200 px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
           <Eye className="w-3.5 h-3.5 text-amber-400" />
@@ -66,14 +80,19 @@ export default function Header() {
           <Bell className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center space-x-2 pl-2 border-l border-[#333333] cursor-pointer hover:opacity-90">
+        {/* User Account Display */}
+        <div className="flex items-center space-x-2.5 pl-2 border-l border-[#333333]">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-[11px] font-bold text-slate-950 shadow-xs">
-            RGS
+            {initials}
           </div>
-          <span className="text-xs font-semibold text-gray-200 hidden sm:inline-block">
-            Raju Ghee Sweets
-          </span>
-          <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-semibold text-gray-200 truncate max-w-[140px]">
+              {userName}
+            </span>
+            <span className="text-[10px] text-gray-400 truncate max-w-[140px]">
+              {user?.email || "Authenticated User"}
+            </span>
+          </div>
         </div>
       </div>
     </header>

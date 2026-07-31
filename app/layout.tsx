@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Sidebar from "@/components/Sidebar";
+import { AuthProvider } from "@/context/AuthContext";
+import AuthGuard from "@/components/AuthGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,17 +31,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="min-h-full flex flex-col font-sans select-none bg-[#f6f6f7]">
-        {/* Shared App Header */}
-        <Header />
-
-        {/* Workspace Shell Layout with Sidebar & Active Page View */}
-        <div className="flex flex-1 overflow-hidden min-h-[calc(100vh-3.5rem)]">
-          <Sidebar />
-
-          <main className="flex-1 overflow-y-auto bg-[#f6f6f7]">
-            {children}
-          </main>
-        </div>
+        <AuthProvider>
+          <AuthGuard>{children}</AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   );
