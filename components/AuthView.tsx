@@ -36,13 +36,18 @@ export default function AuthView() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Check if app is already running in standalone PWA mode
       if (window.matchMedia("(display-mode: standalone)").matches) {
         setIsInstalled(true);
       }
 
+      // Check if global window script captured beforeinstallprompt
+      if ((window as any).deferredPwaPrompt) {
+        setDeferredPrompt((window as any).deferredPwaPrompt);
+      }
+
       const handleBeforeInstallPrompt = (e: Event) => {
         e.preventDefault();
+        (window as any).deferredPwaPrompt = e;
         setDeferredPrompt(e);
       };
 
@@ -54,15 +59,36 @@ export default function AuthView() {
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === "accepted") {
-        setIsInstalled(true);
+    const promptToUse =
+      deferredPrompt || (typeof window !== "undefined" && (window as any).deferredPwaPrompt);
+
+    if (promptToUse) {
+      try {
+        promptToUse.prompt();
+        const choiceResult = await promptToUse.userChoice;
+        if (choiceResult.outcome === "accepted") {
+          setIsInstalled(true);
+        }
+        setDeferredPrompt(null);
+        if (typeof window !== "undefined") {
+          (window as any).deferredPwaPrompt = null;
+        }
+      } catch (err) {
+        console.error("Direct install prompt error:", err);
       }
-      setDeferredPrompt(null);
     } else {
-      setShowInstallGuide(true);
+      // Check if iOS device
+      const isIOS =
+        typeof navigator !== "undefined" &&
+        /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+        !(window as any).MSStream;
+
+      if (isIOS) {
+        setShowInstallGuide(true);
+      } else {
+        // Fallback for Android/Chrome if user clicks before prompt initializes
+        alert("App installation ready! Tap Chrome menu (⋮) -> 'Install app' or 'Add to Home screen'");
+      }
     }
   };
 
@@ -282,14 +308,14 @@ export default function AuthView() {
         </div>
       </div>
 
-      {/* PWA Installation Instructions Modal */}
+      {/* PWA iOS Safari Instructions Modal */}
       {showInstallGuide && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-amber-600" />
-                Install InvoiceNext App
+                Install on iPhone / iPad
               </h4>
               <button
                 onClick={() => setShowInstallGuide(false)}
@@ -300,22 +326,15 @@ export default function AuthView() {
             </div>
 
             <div className="space-y-3 text-xs text-slate-700">
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl space-y-1.5">
-                <span className="font-bold text-amber-950 flex items-center gap-1.5">
-                  <Share className="w-3.5 h-3.5 text-amber-600" /> iPhone / iPad (Safari)
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2">
+                <span className="font-bold text-amber-950 flex items-center gap-1.5 text-xs">
+                  <Share className="w-4 h-4 text-amber-600" /> Follow these steps in Safari:
                 </span>
-                <p className="text-[11px] text-amber-900">
-                  Tap the <strong className="font-bold">Share</strong> icon in Safari toolbar, scroll down, and select <strong className="font-bold font-mono">"Add to Home Screen"</strong>.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl space-y-1.5">
-                <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Download className="w-3.5 h-3.5 text-slate-700" /> Android / Chrome / Edge
-                </span>
-                <p className="text-[11px] text-slate-600">
-                  Tap the browser menu <strong className="font-bold font-mono">(⋮)</strong> and select <strong className="font-bold font-mono">"Install app"</strong> or <strong className="font-bold font-mono">"Add to Home screen"</strong>.
-                </p>
+                <ol className="list-decimal list-inside space-y-1.5 text-[11px] text-amber-900 font-medium">
+                  <li>Tap the <strong>Share</strong> button at the bottom of Safari.</li>
+                  <li>Scroll down the share menu options.</li>
+                  <li>Tap <strong>"Add to Home Screen"</strong>.</li>
+                </ol>
               </div>
             </div>
 
